@@ -1369,7 +1369,8 @@ void get_next_batch(data d, int n, int offset, float *X, float *y)
 {
     int j;
     for(j = 0; j < n; ++j){
-        int index = offset + j;
+        int index = offset + j;//要拷贝的图片index，相当于d.X的行数
+		//把d.X逐行（逐个图片）拷贝进net->input
         memcpy(X+j*d.X.cols, d.X.vals[index], d.X.cols*sizeof(float));
         if(y) memcpy(y+j*d.y.cols, d.y.vals[index], d.y.cols*sizeof(float));
     }

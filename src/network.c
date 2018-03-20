@@ -192,13 +192,13 @@ void forward_network(network *netp)
     network net = *netp;
     int i;
     for(i = 0; i < net.n; ++i){
-        net.index = i;
+        net.index = i;//记录正在遍历第几层
         layer l = net.layers[i];
         if(l.delta){
-            fill_cpu(l.outputs * l.batch, 0, l.delta, 1);
+            fill_cpu(l.outputs * l.batch, 0, l.delta, 1);//如果有残留的delta需要清0
         }
         l.forward(l, net);
-        net.input = l.output;
+        net.input = l.output;//把该层的输出输入到下一层
         if(l.truth) {
             net.truth = l.output;
         }
@@ -286,10 +286,10 @@ float train_network_datum(network *net)
 {
     *net->seen += net->batch;
     net->train = 1;
-    forward_network(net);
+    forward_network(net);//at network.c
     backward_network(net);
     float error = *net->cost;
-    if(((*net->seen)/net->batch)%net->subdivisions == 0) update_network(net);
+    if(((*net->seen)/net->batch)%net->subdivisions == 0) update_network(net);//训练完cfg中的batch个图片之后更新网络
     return error;
 }
 
@@ -310,17 +310,24 @@ float train_network_sgd(network *net, data d, int n)
 float train_network(network *net, data d)
 {
     assert(d.X.rows % net->batch == 0);
-    int batch = net->batch;
-    int n = d.X.rows / batch;
+    int batch = net->batch;//net里的batch是cfg的batch/subdiv，一个subdiv读取的图片数量
+    int n = d.X.rows / batch;//subdiv
+	/*
+	d.X.rows:一次加载到内存中的图片数，cfg中的batch
+	d.X.cols:一张图片的数据量，w*h*c
+	d.y.rows:同X
+	d.y.cols:truth的数据量？
+	*/
 
     int i;
     float sum = 0;
+	//训练subdiv次，把误差累加
     for(i = 0; i < n; ++i){
-        get_next_batch(d, batch, i*batch, net->input, net->truth);
-        float err = train_network_datum(net);
+        get_next_batch(d, batch, i*batch, net->input, net->truth);//把d的内容复制到net->input和truth，一次复制batch张图片，i>0时需要offset（第三个参数）  at data.c
+        float err = train_network_datum(net);//实现在上面隔一个函数
         sum += err;
     }
-    return (float)sum/(n*batch);
+    return (float)sum/(n*batch);//累加值除以训练的图片总数，返回
 }
 
 void set_temp_network(network *net, float t)

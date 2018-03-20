@@ -28,6 +28,9 @@ net里的n是层数，layer里的n是filters
 线程的部分比较谜，不过也无关紧要
 
 用的图片库是stb_image.h，但是不知道用了哪个函数，要是能找出来设置断点就好了
+^
+|
+image.c，data.c里的load_data(arg)会调用
 
 
 
