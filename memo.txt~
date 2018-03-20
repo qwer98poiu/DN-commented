@@ -25,10 +25,6 @@ net里的n是层数，layer里的n是filters
 
 训练的时候一次加载batch*subdiv，然后分subdiv次训练完
 
-线程的部分比较谜，不过也无关紧要
-
-用的图片库是stb_image.h，但是不知道用了哪个函数，要是能找出来设置断点就好了
-
 
 
 

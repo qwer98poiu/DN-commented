@@ -324,7 +324,7 @@ layer parse_region(list *options, size_params params)
             l.biases[i] = bias;
             a = strchr(a, ',')+1;
         }
-    }
+    }f
     return l;
 }
 detection_layer parse_detection(list *options, size_params params)
@@ -733,12 +733,13 @@ network *parse_network_cfg(char *filename)
         l.dontloadscales = option_find_int_quiet(options, "dontloadscales", 0);
         l.learning_rate_scale = option_find_float_quiet(options, "learning_rate", 1);
         l.smooth = option_find_float_quiet(options, "smooth", 0);
-        option_unused(options);
+        option_unused(options);//option_list.c 如果有unused则打印
         net->layers[count] = l;
         if (l.workspace_size > workspace_size) workspace_size = l.workspace_size;//把所有层中最大的workspace设为网络的workspace
         free_section(s);
         n = n->next;
         ++count;
+        //下一层的输入是上一层的输出
         if(n){
             params.h = l.out_h;
             params.w = l.out_w;
@@ -746,6 +747,7 @@ network *parse_network_cfg(char *filename)
             params.inputs = l.outputs;
         }
     }
+    //所有层创建完毕
     free_list(sections);
     layer out = get_network_output_layer(net);//把非cost层的最后一层作为输出
     net->outputs = out.outputs;
@@ -1053,8 +1055,9 @@ void load_convolutional_weights(layer l, FILE *fp)
         //return;
     }
     int num = l.nweights;
-    fread(l.biases, sizeof(float), l.n, fp);
+    fread(l.biases, sizeof(float), l.n, fp);//读偏置
     if (l.batch_normalize && (!l.dontloadscales)){
+    	//读BN参数
         fread(l.scales, sizeof(float), l.n, fp);
         fread(l.rolling_mean, sizeof(float), l.n, fp);
         fread(l.rolling_variance, sizeof(float), l.n, fp);
@@ -1085,7 +1088,7 @@ void load_convolutional_weights(layer l, FILE *fp)
             printf("\n");
         }
     }
-    fread(l.weights, sizeof(float), num, fp);
+    fread(l.weights, sizeof(float), num, fp);//读权值
     //if(l.c == 3) scal_cpu(num, 1./256, l.weights, 1);
     if (l.flipped) {
         transpose_matrix(l.weights, l.c*l.size*l.size, l.n);
@@ -1114,6 +1117,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
     int major;
     int minor;
     int revision;
+    //前三个数，
     fread(&major, sizeof(int), 1, fp);
     fread(&minor, sizeof(int), 1, fp);
     fread(&revision, sizeof(int), 1, fp);
@@ -1127,6 +1131,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
     int transpose = (major > 1000) || (minor > 1000);
 
     int i;
+    //遍历所有层，权值从第start层加载到第cutoff层
     for(i = start; i < net->n && i < cutoff; ++i){
         layer l = net->layers[i];
         if (l.dontload) continue;

@@ -324,7 +324,7 @@ layer parse_region(list *options, size_params params)
             l.biases[i] = bias;
             a = strchr(a, ',')+1;
         }
-    }
+    }f
     return l;
 }
 detection_layer parse_detection(list *options, size_params params)
@@ -733,12 +733,13 @@ network *parse_network_cfg(char *filename)
         l.dontloadscales = option_find_int_quiet(options, "dontloadscales", 0);
         l.learning_rate_scale = option_find_float_quiet(options, "learning_rate", 1);
         l.smooth = option_find_float_quiet(options, "smooth", 0);
-        option_unused(options);
+        option_unused(options);//option_list.c 如果有unused则打印
         net->layers[count] = l;
         if (l.workspace_size > workspace_size) workspace_size = l.workspace_size;//把所有层中最大的workspace设为网络的workspace
         free_section(s);
         n = n->next;
         ++count;
+        //下一层的输入是上一层的输出
         if(n){
             params.h = l.out_h;
             params.w = l.out_w;
@@ -746,8 +747,9 @@ network *parse_network_cfg(char *filename)
             params.inputs = l.outputs;
         }
     }
+    //所有层创建完毕
     free_list(sections);
-    layer out = get_network_output_layer(net);
+    layer out = get_network_output_layer(net);//把非cost层的最后一层作为输出
     net->outputs = out.outputs;
     net->truths = out.outputs;
     if(net->layers[net->n-1].truths) net->truths = net->layers[net->n-1].truths;

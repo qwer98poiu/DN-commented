@@ -52,16 +52,16 @@ network *load_network(char *cfg, char *weights, int clear)
 {
     network *net = parse_network_cfg(cfg);//parser.c
     if(weights && weights[0] != 0){
-        load_weights(net, weights);
+        load_weights(net, weights);//parser.c
     }
     if(clear) (*net->seen) = 0;
     return net;
 }
 
-size_t get_current_batch(network *net)
+size_t get_current_batch(network *net) 	
 {
     size_t batch_num = (*net->seen)/(net->batch*net->subdivisions);
-    return batch_num;
+    return batch_num; 	 		
 }
 
 void reset_network_state(network *net, int b)

@@ -24,12 +24,13 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     int seed = rand();
     int i;
     for(i = 0; i < ngpus; ++i){
+    	//如果有多个gpu需要加载多次网络
         srand(seed);
 #ifdef GPU
         cuda_set_device(gpus[i]);
 #endif
-        nets[i] = load_network(cfgfile, weightfile, clear);//network.c
-        nets[i]->learning_rate *= ngpus;
+        nets[i] = load_network(cfgfile, weightfile, clear);//载入网络结构和权值 at network.c
+        nets[i]->learning_rate *= ngpus;//why?
     }
     srand(time(0));
     network *net = nets[0];
@@ -43,9 +44,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     int classes = l.classes;
     float jitter = l.jitter;
 
-    list *plist = get_paths(train_images);
+    list *plist = get_paths(train_images);//把图片列表文件的所有行插入列表plist at data.c
     //int N = plist->size;
-    char **paths = (char **)list_to_array(plist);
+    char **paths = (char **)list_to_array(plist);//列表转化成数组
 
     load_args args = get_base_args(net);
     args.coords = l.coords;
@@ -58,14 +59,16 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     args.d = &buffer;
     args.type = DETECTION_DATA;
     //args.type = INSTANCE_DATA;
-    args.threads = 64;
+    args.threads = 64;//线程数？
 
-    pthread_t load_thread = load_data(args);
+    pthread_t load_thread = load_data(args);//创建线程
     double time;
     int count = 0;
     //while(i*imgs < N*120){
     while(get_current_batch(net) < net->max_batches){
+    	//get_current_batch() at network.c seen/总batch数，得到该看哪个batch，到cfg文件设定的最大batch数停止
         if(l.random && count++%10 == 0){
+        	//随机输入大小
             printf("Resizing\n");
             int dim = (rand() % 10 + 10) * 32;
             if (get_current_batch(net)+200 > net->max_batches) dim = 608;
@@ -124,7 +127,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             loss = train_networks(nets, ngpus, train, 4);
         }
 #else
-        loss = train_network(net, train);
+        loss = train_network(net, train);//训练，返回loss
 #endif
         if (avg_loss < 0) avg_loss = loss;
         avg_loss = avg_loss*.9 + loss*.1;
@@ -132,7 +135,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         i = get_current_batch(net);
         printf("%ld: %f, %f avg, %f rate, %lf seconds, %d images\n", get_current_batch(net), loss, avg_loss, get_current_rate(net), what_time_is_it_now()-time, i*imgs);
         if(i%100==0){
+        //每100次保存一次
 #ifdef GPU
+
             if(ngpus != 1) sync_nets(nets, ngpus, 0);
 #endif
             char buff[256];
