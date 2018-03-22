@@ -25,12 +25,70 @@ net里的n是层数，layer里的n是filters
 
 训练的时候一次加载batch*subdiv，然后分subdiv次训练完
 
-线程的部分比较谜，不过也无关紧要
 
 用的图片库是stb_image.h，但是不知道用了哪个函数，要是能找出来设置断点就好了
 ^
 |
 image.c，data.c里的load_data(arg)会调用
+
+网络包含5种层：conv maxpool route reorg region
+
+conv和maxpool不解释，conv每层都设置了BN
+route是把若干层的输出拼在一起，这里把16层conv->reorg(27层)之后与24层拼在一起，两次卷积后输出
+
+-nogpu会出bug
+reorg层输入特征图数少于stride^2也有bug
+
+
+拼图的时候forward = 1，一切正常（和flatten的效果一样？）
+拆图的时候forward = 0，奇怪的拆图法：
+输入的所有特征图竖着排成一列，选出前stride行，列选一个隔stride - 1个，放进输出
+再隔(stride-1)*stride行，选stride行，列同样选一个隔stride - 1个，放进输出
+一直把所有行都选完，这时输入有多少特征图，输出也有多少特征图，设有c个
+一共需要得到c*stride*stride个输出
+第2个c：选列的时候向右串一个选
+.
+.
+.
+列不能串了，就在选行的时候串
+
+问题：如果输入的宽和高不能被stride^2整除，因为每次都搬过来stride行到输出，那么一次搬过来的这么多行可能会到了输出里就被拆到了不同的特征图里去= =
+
+
+    9 conv    128  1 x 1 / 1    52 x  52 x 256   ->    52 x  52 x 128
+   10 conv    256  3 x 3 / 1    52 x  52 x 128   ->    52 x  52 x 256
+   11 max          2 x 2 / 2    52 x  52 x 256   ->    26 x  26 x 256
+   12 conv    512  3 x 3 / 1    26 x  26 x 256   ->    26 x  26 x 512
+   13 conv    256  1 x 1 / 1    26 x  26 x 512   ->    26 x  26 x 256
+   14 conv    512  3 x 3 / 1    26 x  26 x 256   ->    26 x  26 x 512
+   15 conv    256  1 x 1 / 1    26 x  26 x 512   ->    26 x  26 x 256
+   16 conv    512  3 x 3 / 1    26 x  26 x 256   ->    26 x  26 x 512
+   17 max          2 x 2 / 2    26 x  26 x 512   ->    13 x  13 x 512
+   18 conv   1024  3 x 3 / 1    13 x  13 x 512   ->    13 x  13 x1024
+   19 conv    512  1 x 1 / 1    13 x  13 x1024   ->    13 x  13 x 512
+   20 conv   1024  3 x 3 / 1    13 x  13 x 512   ->    13 x  13 x1024
+   21 conv    512  1 x 1 / 1    13 x  13 x1024   ->    13 x  13 x 512
+   22 conv   1024  3 x 3 / 1    13 x  13 x 512   ->    13 x  13 x1024
+   23 conv   1024  3 x 3 / 1    13 x  13 x1024   ->    13 x  13 x1024
+   24 conv   1024  3 x 3 / 1    13 x  13 x1024   ->    13 x  13 x1024
+   25 route  16
+   26 conv     64  1 x 1 / 1    26 x  26 x 512   ->    26 x  26 x  64
+   27 reorg              / 2    26 x  26 x  64   ->    13 x  13 x 256
+   28 route  27 24
+   29 conv   1024  3 x 3 / 1    13 x  13 x1280   ->    13 x  13 x1024
+   30 conv    125  1 x 1 / 1    13 x  13 x1024   ->    13 x  13 x 125
+   31 detection
+   
+mask_scale: Using default '1.000000'
+Loading weights from darknet19_448.conv.23...Done!
+Learning Rate: 0.001, Momentum: 0.9, Decay: 0.0005
+
+Resizing
+448
+
+
+
+
 
 
 

@@ -284,7 +284,7 @@ void softmax_cpu(float *input, int n, int batch, int batch_offset, int groups, i
     int g, b;
     for(b = 0; b < batch; ++b){
         for(g = 0; g < groups; ++g){
-            softmax(input + b*batch_offset + g*group_offset, n, temp, stride, output + b*batch_offset + g*group_offset);//stride：在同一位置预测同一类的格子之间的距离
+            softmax(input + b*batch_offset + g*group_offset, n, temp, stride, output + b*batch_offset + g*group_offset);
         }
     }
 }

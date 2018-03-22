@@ -85,16 +85,14 @@ box get_region_box(float *x, float *biases, int n, int index, int i, int j, int 
 
 float delta_region_box(box truth, float *x, float *biases, int n, int index, int i, int j, int w, int h, float *delta, float scale, int stride)
 {
-    box pred = get_region_box(x, biases, n, index, i, j, w, h, stride);//预测框
+    box pred = get_region_box(x, biases, n, index, i, j, w, h, stride);
     float iou = box_iou(pred, truth);
 
-	//归一化
     float tx = (truth.x*w - i);
     float ty = (truth.y*h - j);
     float tw = log(truth.w*w / biases[2*n]);
     float th = log(truth.h*h / biases[2*n + 1]);
 
-	//求误差存入delta
     delta[index + 0*stride] = scale * (tx - x[index + 0*stride]);
     delta[index + 1*stride] = scale * (ty - x[index + 1*stride]);
     delta[index + 2*stride] = scale * (tw - x[index + 2*stride]);
@@ -218,7 +216,7 @@ void forward_region_layer(const layer l, network net)
                         if(p > maxp){
                             maxp = p;
                             maxi = n;
-                        }outube.com
+                        }
                     }
                     int class_index = entry_index(l, b, maxi, l.coords + 1);
                     int obj_index = entry_index(l, b, maxi, l.coords);
@@ -239,23 +237,23 @@ void forward_region_layer(const layer l, network net)
                     int box_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 0)//box起始位置
                     box pred = get_region_box(l.output, l.biases, n, box_index, i, j, l.w, l.h, l.w*l.h);
                     float best_iou = 0;
-                    for(t = 0; t < 30; ++t){//一张图片最多有30个truth框
+                    for(t = 0; t < 30; ++t){
                         box truth = float_to_box(net.truth + t*(l.coords + 1) + b*l.truths, 1);//at box.c
                         if(!truth.x) break;
                         float iou = box_iou(pred, truth);
                         if (iou > best_iou) {
-                            best_iou = iou;//找到与这个cell最匹配的框
+                            best_iou = iou;
                         }
                     }
-                    int obj_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, l.coords);//confidence
+                    int obj_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, l.coords);
                     avg_anyobj += l.output[obj_index];
-                    l.delta[obj_index] = l.noobject_scale * (0 - l.output[obj_index]);//不预测框的cell
+                    l.delta[obj_index] = l.noobject_scale * (0 - l.output[obj_index]);
                     if(l.background) l.delta[obj_index] = l.noobject_scale * (1 - l.output[obj_index]);
                     if (best_iou > l.thresh) {
-                        l.delta[obj_index] = 0;//找到框则delta=0
+                        l.delta[obj_index] = 0;
                     }
 
-                    if(*(net.seen) < 12800){//前12800张图片先让x, y往0.5走，w，h往0走？
+                    if(*(net.seen) < 12800){
                         box truth = {0};
                         truth.x = (i + .5)/l.w;
                         truth.y = (j + .5)/l.h;
@@ -266,7 +264,7 @@ void forward_region_layer(const layer l, network net)
                 }
             }
         }
-        for(t = 0; t < 30; ++t){//遍历所有truth框
+        for(t = 0; t < 30; ++t){
             box truth = float_to_box(net.truth + t*(l.coords + 1) + b*l.truths, 1);
 
             if(!truth.x) break;
@@ -279,9 +277,9 @@ void forward_region_layer(const layer l, network net)
             truth_shift.x = 0;
             truth_shift.y = 0;
             //printf("index %d %d\n",i, j);
-            for(n = 0; n < l.n; ++n){//找出cell(i,j)预测的n个框中最好的一个
-                int box_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 0);//找到该负责这个框的坐标
-                box pred = get_region_box(l.output, l.biases, n, box_index, i, j, l.w, l.h, l.w*l.h);//取出它预测的结果
+            for(n = 0; n < l.n; ++n){
+                int box_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 0);
+                box pred = get_region_box(l.output, l.biases, n, box_index, i, j, l.w, l.h, l.w*l.h);
                 if(l.bias_match){
                     pred.w = l.biases[2*n]/l.w;
                     pred.h = l.biases[2*n+1]/l.h;
@@ -298,7 +296,7 @@ void forward_region_layer(const layer l, network net)
             //printf("%d %f (%f, %f) %f x %f\n", best_n, best_iou, truth.x, truth.y, truth.w, truth.h);
 
             int box_index = entry_index(l, b, best_n*l.w*l.h + j*l.w + i, 0);
-            float iou = delta_region_box(truth, l.output, l.biases, best_n, box_index, i, j, l.w, l.h, l.delta, l.coord_scale *  (2 - truth.w*truth.h), l.w*l.h);//算iou并更新delta
+            float iou = delta_region_box(truth, l.output, l.biases, best_n, box_index, i, j, l.w, l.h, l.delta, l.coord_scale *  (2 - truth.w*truth.h), l.w*l.h);
             if(l.coords > 4){
                 int mask_index = entry_index(l, b, best_n*l.w*l.h + j*l.w + i, 4);
                 delta_region_mask(net.truth + t*(l.coords + 1) + b*l.truths + 5, l.output, l.coords - 4, mask_index, l.delta, l.w*l.h, l.mask_scale);
@@ -307,11 +305,11 @@ void forward_region_layer(const layer l, network net)
             avg_iou += iou;
 
             //l.delta[best_index + 4] = iou - l.output[best_index + 4];
-            int obj_index = entry_index(l, b, best_n*l.w*l.h + j*l.w + i, l.coords);//这个最好的框的confidence
+            int obj_index = entry_index(l, b, best_n*l.w*l.h + j*l.w + i, l.coords);
             avg_obj += l.output[obj_index];
             l.delta[obj_index] = l.object_scale * (1 - l.output[obj_index]);
             if (l.rescore) {
-                l.delta[obj_index] = l.object_scale * (iou - l.output[obj_index]);//重新算delta
+                l.delta[obj_index] = l.object_scale * (iou - l.output[obj_index]);
             }
             if(l.background){
                 l.delta[obj_index] = l.object_scale * (0 - l.output[obj_index]);
@@ -320,13 +318,13 @@ void forward_region_layer(const layer l, network net)
             int class = net.truth[t*(l.coords + 1) + b*l.truths + l.coords];
             if (l.map) class = l.map[class];
             int class_index = entry_index(l, b, best_n*l.w*l.h + j*l.w + i, l.coords + 1);
-            delta_region_class(l.output, l.delta, class_index, class, l.classes, l.softmax_tree, l.class_scale, l.w*l.h, &avg_cat, !l.softmax);//算class的误差，并更新delta
+            delta_region_class(l.output, l.delta, class_index, class, l.classes, l.softmax_tree, l.class_scale, l.w*l.h, &avg_cat, !l.softmax);
             ++count;
             ++class_count;
         }
     }
     //printf("\n");
-    *(l.cost) = pow(mag_array(l.delta, l.outputs * l.batch), 2);//误差的平方和
+    *(l.cost) = pow(mag_array(l.delta, l.outputs * l.batch), 2);
     printf("Region Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, Avg Recall: %f,  count: %d\n", avg_iou/count, avg_cat/class_count, avg_obj/count, avg_anyobj/(l.w*l.h*l.n*l.batch), recall/count, count);
 }
 

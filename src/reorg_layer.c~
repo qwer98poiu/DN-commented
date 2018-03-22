@@ -96,7 +96,7 @@ void forward_reorg_layer(const layer l, network net)
         if(l.reverse){
             flatten(l.output, l.w*l.h, l.c, l.batch, 0);
         }else{
-            flatten(l.output, l.w*l.h, l.c, l.batch, 1);//at blas.c 把若干张特征图拍平成一张图
+            flatten(l.output, l.w*l.h, l.c, l.batch, 1);//at blas.c
         }
     } else if (l.extra) {
         for(i = 0; i < l.batch; ++i){
